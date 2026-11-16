@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.env
+.data
+data/*.db
+data/*.txt
+media/c_*.mp3
+media/in_*.mp3
+media/demo_*.mp3
+media/*.wav
+demo/
+static/trtc/
+*.bak.*
+.DS_Store

@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>通话中</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#070707}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC",sans-serif;
+ color:#fff;-webkit-font-smoothing:antialiased}
+
+/* 舞台 */
+#stage{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;
+ background:radial-gradient(120% 80% at 50% 10%,#1c1a17 0%,#0a0a0a 55%,#050505 100%);
+ box-shadow:0 0 80px rgba(0,0,0,.9);
+ display:flex;align-items:center;justify-content:center}
+
+/* 对方画面（视频模式全屏） */
+#remote{position:absolute;inset:0;width:100%;height:100%;background:#0a0a0a;
+ opacity:0;transition:opacity .5s;overflow:hidden;z-index:1}
+#remote.on{opacity:1}
+#remote video{width:100%!important;height:100%!important;object-fit:cover;display:block}
+
+/* 语音模式中央 */
+#voice{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ opacity:0;transition:opacity .5s;pointer-events:none}
+#voice.on{opacity:1}
+.avatar{position:relative;width:172px;height:172px}
+.avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;filter:brightness(1.08) contrast(1.02);
+ box-shadow:0 0 0 1px rgba(201,169,97,.45),0 0 42px rgba(201,169,97,.12),0 20px 60px rgba(0,0,0,.75)}
+.ring{position:absolute;inset:-20px;border-radius:50%;border:1px solid rgba(201,169,97,.3);
+ animation:breath 3.2s ease-in-out infinite}
+.ring:nth-child(2){animation-delay:1.06s}
+.ring:nth-child(3){animation-delay:2.12s}
+@keyframes breath{0%{transform:scale(.92);opacity:.55}60%{transform:scale(1.22);opacity:0}100%{opacity:0}}
+.vname{margin-top:34px;font-size:23px;letter-spacing:.14em;font-family:"Songti SC","Noto Serif CJK SC",serif}
+.vsub{margin-top:10px;font-size:13px;color:rgba(255,255,255,.42);letter-spacing:.18em}
+/* 声波 */
+.wave{margin-top:26px;height:26px;display:flex;align-items:center;gap:3px;opacity:.75;
+ transition:opacity .4s}
+.wave.off{opacity:0}
+.wave i{width:3px;background:#c9a961;border-radius:2px;animation:ww 1.1s ease-in-out infinite}
+@keyframes ww{0%,100%{height:5px}50%{height:22px}}
+
+/* 小窗 */
+#local{position:absolute;right:14px;bottom:calc(150px + env(safe-area-inset-bottom));width:98px;height:132px;
+ border-radius:14px;overflow:hidden;background:#151310;border:1px solid rgba(201,169,97,.35);
+ box-shadow:0 10px 30px rgba(0,0,0,.6);opacity:0;transition:opacity .4s;z-index:4}
+#local.on{opacity:1}
+#local video{width:100%!important;height:100%!important;object-fit:cover;display:block}
+
+/* 顶部 */
+.top{position:absolute;top:0;left:0;right:0;padding:calc(22px + env(safe-area-inset-top)) 22px 40px;
+ background:linear-gradient(180deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,.35) 55%,transparent 100%);
+ z-index:5;text-align:center;pointer-events:none}
+.who{font-size:17px;letter-spacing:.1em;color:rgba(255,255,255,.92)}
+.time{margin-top:7px;font-size:13px;color:rgba(255,255,255,.45);letter-spacing:.16em;
+ font-variant-numeric:tabular-nums}
+.badge{display:inline-block;margin-top:8px;font-size:11px;letter-spacing:.16em;color:rgba(201,169,97,.75)}
+
+/* 底部控制 */
+.ctrls{position:absolute;left:0;right:0;bottom:0;padding:34px 26px calc(30px + env(safe-area-inset-bottom));
+ background:linear-gradient(0deg,rgba(0,0,0,.82) 0%,rgba(0,0,0,.45) 50%,transparent 100%);
+ z-index:6;display:flex;align-items:flex-end;justify-content:space-between}
+.btn{display:flex;flex-direction:column;align-items:center;gap:9px;background:none;border:0;
+ font-family:inherit;cursor:pointer;padding:0}
+.circle{width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+ background:rgba(255,255,255,.11);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+ border:1px solid rgba(255,255,255,.14);transition:.18s}
+.btn:active .circle{transform:scale(.92);background:rgba(255,255,255,.2)}
+.circle svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:1.9;
+ stroke-linecap:round;stroke-linejoin:round}
+.circle.off{background:rgba(255,255,255,.9)}
+.circle.off svg{stroke:#111}
+.hang .circle{background:#e0554a;border-color:#e0554a;width:70px;height:70px;
+ box-shadow:0 8px 26px rgba(224,85,74,.42)}
+.hang .circle svg{width:30px;height:30px}
+.lb{font-size:11px;color:rgba(255,255,255,.6);letter-spacing:.1em}
+.ctrls.voice #b-cam{visibility:hidden}
+.ctrls.voice{justify-content:center;gap:54px}
+.ctrls.voice .hang .circle{width:66px;height:66px}
+.hang .lb{color:rgba(255,255,255,.72)}
+
+/* 进入前 */
+#pre{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:20;background:#070707;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;padding:30px;transition:opacity .45s}
+#pre.gone{opacity:0;pointer-events:none}
+.pav{width:120px;height:120px;border-radius:50%;object-fit:cover;
+ box-shadow:0 0 0 1px rgba(201,169,97,.35)}
+.ph1{margin-top:26px;font-size:20px;letter-spacing:.1em;font-family:"Songti SC",serif}
+.ph2{margin-top:10px;font-size:13px;color:rgba(255,255,255,.4);letter-spacing:.1em;text-align:center;line-height:1.9}
+.enter{margin-top:44px;background:#c9a961;color:#0a0a0a;border:0;border-radius:40px;
+ font-family:inherit;font-size:16px;font-weight:600;letter-spacing:.16em;padding:17px 54px;cursor:pointer;
+ box-shadow:0 10px 30px rgba(201,169,97,.28)}
+.enter:active{transform:scale(.97)}
+.pnote{margin-top:20px;font-size:11.5px;color:rgba(255,255,255,.28);letter-spacing:.06em;line-height:1.9;text-align:center}
+
+/* 结束 */
+#over{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:30;background:#070707;display:none;flex-direction:column;
+ align-items:center;justify-content:center;padding:30px}
+#over.on{display:flex}
+.ov1{font-size:15px;color:rgba(255,255,255,.45);letter-spacing:.16em}
+.ov2{margin:16px 0 6px;font-size:46px;font-weight:200;color:#c9a961;letter-spacing:.04em;
+ font-variant-numeric:tabular-nums}
+.ov3{font-size:13px;color:rgba(255,255,255,.4);letter-spacing:.1em;margin-bottom:40px}
+.back{display:block;text-align:center;text-decoration:none;color:#c9a961;border:1px solid rgba(201,169,97,.35);
+ border-radius:40px;padding:15px 48px;font-size:15px;letter-spacing:.14em}
+.pulse{animation:pl 1.6s ease-in-out infinite}
+@keyframes pl{0%,100%{box-shadow:0 0 0 0 rgba(201,169,97,.55)}50%{box-shadow:0 0 0 14px rgba(201,169,97,0)}}
+#ringbar{position:fixed;left:0;right:0;top:0;z-index:999;display:none;
+  padding:14px 18px calc(14px + env(safe-area-inset-top)) 18px;text-align:center;
+  font-size:15px;line-height:1.5;color:#f3ead8;pointer-events:none;
+  background:linear-gradient(180deg,rgba(201,169,97,.96),rgba(160,130,66,.92))}
+#ringbar.on{display:block}
+#ringbar b{display:block;font-size:19px;letter-spacing:2px;margin-bottom:2px}
+</style>
+<script>
+/* 先走代理机的本地静态（gzip + 7天缓存），失败则回落到源站 */
+(function(){
+  function load(src, ok, fail){
+    var el = document.createElement('script');
+    el.src = src; el.async = true;
+    el.onload = ok || function(){};
+    el.onerror = fail || function(){};
+    document.head.appendChild(el);
+  }
+  function fallback(){
+    console.log('[sdk] 回落到源站');
+    load('/xin/static/trtc/trtc.js');
+  }
+  load('/trtc/trtc-5.21.0.js',
+       function(){
+         if (window.TRTC) { console.log('[sdk] 代理机 OK'); }
+         else { fallback(); }
+       },
+       fallback);
+})();
+</script>
+</head>
+<body>
+
+<div id="stage">
+  <div id="remote"></div>
+
+  <div id="voice">
+    <div class="avatar">
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+      <img src="@@AVATAR@@" alt="">
+    </div>
+    <div class="vsub" id="vsub" style="margin-top:36px;font-size:14px">正在连接…</div>
+    <div class="wave" id="wave"></div>
+  </div>
+
+  <div id="local"></div>
+
+  <div class="top">
+    <div class="who">@@NAME@@</div>
+    <div class="time" id="clock">--:--</div>
+    <div class="badge">@@KIND@@</div>
+  </div>
+
+  <div class="ctrls" id="ctrls">
+    <button class="btn" id="b-mute">
+      <span class="circle"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v3"/></svg></span>
+      <span class="lb" id="lb-mute">静音</span>
+    </button>
+    <button class="btn hang" id="b-hang">
+      <span class="circle"><svg viewBox="0 0 24 24"><path d="M4 15c4-4 12-4 16 0" stroke-width="2.2"/><path d="M7.5 12.5 6 16.5"/><path d="M16.5 12.5 18 16.5"/></svg></span>
+      <span class="lb">挂断</span>
+    </button>
+    <button class="btn" id="b-cam">
+      <span class="circle"><svg viewBox="0 0 24 24"><path d="M15 10l4.5-2.6A1 1 0 0 1 21 8.3v7.4a1 1 0 0 1-1.5.9L15 14"/><rect x="3" y="6" width="12" height="12" rx="2.5"/></svg></span>
+      <span class="lb" id="lb-cam">关画面</span>
+    </button>
+  </div>
+</div>
+
+<div id="pre">
+  <img class="pav" src="@@AVATAR@@" alt="">
+  <div class="ph1">@@NAME@@</div>
+  <div class="ph2" id="p-sub">@@SUB@@</div>
+  <button class="enter" id="b-enter" disabled style="opacity:.5">准 备 中…</button>
+  <div class="pnote" id="pnote">声音和画面只在你们两个人之间<br>不会被保存</div>
+</div>
+
+<div id="ringbar"></div>
+
+<div id="over">
+  <div class="ov1">通话结束</div>
+  <div class="ov2" id="ov-time">00:00</div>
+  <div class="ov3" id="ov-note"></div>
+  <a class="back" href="@@BACK@@">回去</a>
+</div>
+
+<script>
+/* ============ 配置（服务端注入） ============ */
+var CFG = {
+  sdkAppId: @@SDKAPPID@@,      // 0 = 还没配，走本地预览模式
+  userSig: "@@USERSIG@@",
+  userId: "@@USERID@@",
+  roomId: @@ROOMID@@,
+  kind: "@@KINDRAW@@",         // voice | video
+  name: "@@NAME@@",
+  bid: @@BID@@,
+  role: "@@ROLE@@",            // boss = 主理人(被叫) | fan = 粉丝(主叫)
+  peer: "@@PEER@@"
+};
+
+var SEC = 0, TIMER = null, TRTC = null, MUTED = false, CAMON = (CFG.kind === 'video');
+var ENTERED = false, POLL = null, RINGING = false, WAITSEC = 0, PEER_GRACE = null;
+
+/* 谁先到谁等：一方点下去，另一方页面自己接上 */
+function resumeAudio(){
+  try {
+    if (!window.__ac) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) window.__ac = new AC();
+    }
+    if (window.__ac && window.__ac.state === 'suspended') window.__ac.resume();
+    if (window.__ac) {
+      var buf = window.__ac.createBuffer(1, 1, 22050);
+      var src = window.__ac.createBufferSource();
+      src.buffer = buf; src.connect(window.__ac.destination); src.start(0);
+    }
+  } catch (e) {}
+  try {
+    var sil = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+    sil.volume = 0.01; sil.play().catch(function(){});
+  } catch (e) {}
+}
+
+function callPing(){
+  try {
+    fetch('/xin/api/call/ping', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: CFG.bid, role: CFG.role })
+    });
+  } catch (e) {}
+}
+function callStop(){
+  try {
+    fetch('/xin/api/call/stop', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: CFG.bid })
+    });
+  } catch (e) {}
+}
+
+function startPoll(){
+  if (POLL) return;
+  POLL = setInterval(function(){
+    if (ENTERED) { clearInterval(POLL); POLL = null; return; }
+    fetch('/xin/api/call/waiting?bid=' + CFG.bid).then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d || !d.calling) return;
+        if (d.by === CFG.role) return;          // 自己拨的，继续等
+        if (RINGING) return;
+        autoJoin();
+      }).catch(function(){});
+  }, 2000);
+}
+
+function autoJoin(){
+  if (ENTERED || RINGING) return;
+  RINGING = true;
+  var b = document.getElementById('b-enter');
+  if (!SDK_OK) {                      // SDK 还没好，等它
+    setTimeout(autoJoin, 800);
+    RINGING = false;
+    return;
+  }
+  b.disabled = true;
+  b.textContent = CFG.name + ' 打进来了…';
+  document.getElementById('pnote') && (document.getElementById('pnote').textContent = '正在接通');
+  // 不等点击：直接把房间连上，声音等用户点屏幕解锁
+  setTimeout(function(){
+    if (!ENTERED) doEnter(true);
+    setTimeout(function(){
+      if (!ENTERED) return;
+      if (RINGOK) return;
+      var r = document.getElementById('ringbar');
+      r.innerHTML = '<b>点一下屏幕</b>才能听见声音';
+      r.classList.add('on');
+    }, 2400);
+  }, 900);
+}
+if (CFG.kind === 'video') {
+  document.addEventListener('DOMContentLoaded', function(){
+    var n = document.getElementById('pnote');
+    if (n && !navigator.onLine === false) {}
+    if (n) n.innerHTML = '声音和画面只在你们两个人之间<br>不会被保存' +
+      '<br><span style="color:#c9a961">连着 WiFi 更稳，也更省流量</span>';
+  });
+}
+if (CFG.kind !== 'video') {
+  document.addEventListener('DOMContentLoaded', function(){
+    var c = document.getElementById('ctrls'); if (c) c.classList.add('voice');
+  });
+}
+
+/* 声波条 */
+(function(){
+  var w = document.getElementById('wave'), h = '';
+  for (var i = 0; i < 22; i++) {
+    h += '<i style="animation-delay:' + (i * 0.07).toFixed(2) + 's;height:' +
+         (6 + Math.round(Math.abs(Math.sin(i * 1.3)) * 16)) + 'px"></i>';
+  }
+  w.innerHTML = h;
+})();
+
+function pad(n){ return (n < 10 ? '0' : '') + n; }
+function fmt(s){ return pad(Math.floor(s / 60)) + ':' + pad(s % 60); }
+function startClock(){
+  if (TIMER) return;
+  TIMER = setInterval(function(){
+    SEC++;
+    document.getElementById('clock').textContent = fmt(SEC);
+  }, 1000);
+  document.getElementById('clock').textContent = fmt(SEC);
+}
+
+/* ============ 等 SDK 就绪 ============ */
+var SDK_OK = false, WAITED = 0;
+(function waitSDK(){
+  if (window.TRTC) {
+    SDK_OK = true;
+    var b = document.getElementById('b-enter');
+    b.disabled = false; b.style.opacity = '';
+    b.textContent = (CFG.role === 'boss') ? '接 通' : '拨 打';
+    return;
+  }
+  WAITED += 300;
+  if (WAITED > 20000) {
+    var b2 = document.getElementById('b-enter');
+    b2.textContent = '正在等网络…点这里重试';
+    b2.disabled = false; b2.style.opacity = '';
+    b2.onclick = function(){ location.reload(); };
+    return;
+  }
+  setTimeout(waitSDK, 300);
+})();
+
+/* ============ 进入 ============ */
+document.getElementById('b-enter').onclick = function(){
+  doEnter(false);
+};
+
+function doEnter(auto){
+  var b = document.getElementById('b-enter');
+  b.disabled = true;
+  b.textContent = auto ? '接通中…' : ((CFG.role === 'boss') ? '接通中…' : '正在拨…');
+
+  // 手机上必须在这一下点击里把音频解锁，否则全程无声
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) {
+      window.__ac = new AC();
+      if (window.__ac.state === 'suspended') window.__ac.resume();
+      var buf = window.__ac.createBuffer(1, 1, 22050);
+      var src = window.__ac.createBufferSource();
+      src.buffer = buf;
+      src.connect(window.__ac.destination);
+      src.start(0);
+    }
+  } catch (e) {}
+  try {
+    var sil = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+    sil.volume = 0.01;
+    sil.play().catch(function(){});
+  } catch (e) {}
+
+  document.getElementById('pre').classList.add('gone');
+  if (!auto) callPing();
+  boot();
+}
+
+startPoll();
+
+async function boot(){
+  if (CFG.kind === 'video' && !(CFG.sdkAppId && CFG.userSig)) {
+    await openLocalCam();   // 只有降级模式才自己开摄像头
+  }
+  if (CFG.sdkAppId && CFG.userSig && SDK_OK) {
+    joinTRTC();
+  } else {
+    // 预览模式：只有自己这边，等真实 SDK
+    showVoice('等待对方接听');
+    document.getElementById('wave').classList.add('off');
+    document.getElementById('clock').style.opacity = '.3';
+    startClock();
+  }
+}
+
+function showVoice(sub){
+  document.getElementById('voice').classList.add('on');
+  document.getElementById('remote').classList.remove('on');
+  document.getElementById('vsub').textContent = sub || '通话中';
+}
+
+function showVideo(){
+  document.getElementById('voice').classList.remove('on');
+  document.getElementById('remote').classList.add('on');
+  document.getElementById('local').classList.add('on');
+}
+
+/* ============ 本地摄像头 ============ */
+var stream = null;
+async function openLocalCam(){
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 720 } }, audio: false
+    });
+    document.getElementById('local').srcObject = stream;
+    document.getElementById('local').classList.add('on');
+  } catch (e) {
+    document.getElementById('lb-cam').textContent = '没有摄像头';
+  }
+}
+
+/* ============ TRTC ============ */
+async function joinTRTC(){
+  try {
+    TRTC = window.TRTC;
+    if (!TRTC) throw new Error('SDK 还没加载好');
+    var trtc = TRTC.create();
+    window.__trtc = trtc;
+
+    // ---- 监听必须在进房之前挂上，否则远端流到达时收不到 ----
+    trtc.on(TRTC.EVENT.REMOTE_VIDEO_AVAILABLE, function(ev){
+      try {
+        trtc.startRemoteVideo({ userId: ev.userId, streamType: ev.streamType, view: 'remote' });
+        var rv = document.getElementById('remote');
+        rv.classList.add('on');
+        if (CFG.kind === 'video') { rv.style.background = '#0a0a0a'; }
+        setTimeout(function(){
+          var v = rv.querySelector('video');
+          if (!v || !v.videoWidth) {
+            // 收到了通知但没画面，退回头像
+            rv.classList.remove('on');
+            showVoice('他还没开画面');
+          }
+        }, 2500);
+      } catch (e) { console.log('[rv]', e.message); }
+    });
+    ENTERED = true;
+    // 已经在房里但可能没解锁音频：给个明确提示
+    setTimeout(function(){
+      if (SEC > 0) return;
+      var b = document.getElementById('b-enter');
+      if (b && b.classList.contains('pulse')) return;
+    }, 3000);
+    // 主叫等待提示：对方一直没进来
+    setTimeout(function(){
+      if (SEC > 0) return;
+      showVoice(CFG.role === 'boss' ? '还连着，等他说话' : ('正在呼叫' + CFG.name + '…'));
+    }, 1200);
+    setTimeout(function(){
+      if (SEC > 0) return;
+      showVoice('他还没接 · 你可以先留一句话');
+    }, 40000);
+    trtc.on(TRTC.EVENT.REMOTE_USER_ENTER, function(){
+      if (PEER_GRACE) { clearTimeout(PEER_GRACE); PEER_GRACE = null; }
+      startClock();
+      showVoice('通话中');
+      var w = document.getElementById('wave');
+      if (w) w.classList.remove('off');
+    });
+    trtc.on(TRTC.EVENT.REMOTE_AUDIO_AVAILABLE, function(ev){
+      try { trtc.startRemoteAudio({ userId: ev.userId }); } catch(e){}
+      var w = document.getElementById('wave');
+      if (w) w.classList.remove('off');
+    });
+    trtc.on(TRTC.EVENT.KICKED_OUT, hangup);
+
+    // 对方走了：立刻结束这边
+    function onPeerGone(){
+      showVoice('对方网络断了…');
+      if (PEER_GRACE) return;
+      PEER_GRACE = setTimeout(function(){
+        PEER_GRACE = null;
+        hangup(true);
+      }, 3000);
+    }
+    try { trtc.on(TRTC.EVENT.REMOTE_USER_EXIT, onPeerGone); } catch (e) {}
+    try { trtc.on(TRTC.EVENT.REMOTE_USER_LEAVE, onPeerGone); } catch (e) {}
+    try { trtc.on('remote-user-exit', onPeerGone); } catch (e) {}
+
+    // 对方声音真的开始播了才报"通话中"
+    try {
+      trtc.on(TRTC.EVENT.REMOTE_AUDIO_STARTED, function(){
+        RINGOK = true;
+        var r = document.getElementById('ringbar');
+        if (r) r.classList.remove('on');
+        showVoice('通话中');
+      });
+    } catch (e) {}
+    try {
+      trtc.on(TRTC.EVENT.REMOTE_VIDEO_UNAVAILABLE, function(){
+        document.getElementById('remote').classList.remove('on');
+        showVoice('他关掉了画面');
+      });
+    } catch (e) {}
+
+    await trtc.enterRoom({
+      sdkAppId: CFG.sdkAppId,
+      userId: CFG.userId,
+      userSig: CFG.userSig,
+      roomId: CFG.roomId,
+      scene: 'rtc'
+    });
+    // 进房后必须开麦，否则对方听不到
+    try { await trtc.startLocalAudio(); } catch (e) { console.log('[mic]', e.message); }
+    if (CFG.kind === 'video') {
+      try { var st = trtc.startLocalVideo({ view: 'local' }); if (st && st.then) st.catch(function(){}); } catch(e){}
+      showVideo();
+    } else {
+      showVoice('接通了');
+      document.getElementById('wave').classList.add('off');
+    }
+    startClock();
+    // 进房成功先不报"通话中"——等对方真的进来
+    setTimeout(function(){
+      if (SEC > 0) return;
+      showVoice(CFG.role === 'boss' ? '还连着，等他进来'
+                                    : ('正在拨' + CFG.name + '…'));
+      document.getElementById('wave').classList.remove('off');
+      // 手机上浏览器可能要一次触摸才允许出声
+      var tip = document.createElement('div');
+      tip.id = 'touch-tip';
+      tip.style.cssText = 'position:fixed;left:0;right:0;bottom:120px;text-align:center;'
+        + 'font-size:12.5px;color:rgba(201,169,97,.85);z-index:9;pointer-events:none';
+      tip.textContent = '听不见？点一下屏幕中间';
+      document.body.appendChild(tip);
+      setTimeout(function(){ if(tip) tip.style.opacity='0'; }, 7000);
+    }, 1500);
+
+  } catch (e) {
+    var em = (e && (e.message || e.msg)) || (e && e.code) || 'unknown';
+    showVoice('连不上（' + em + '）');
+    document.getElementById('vsub').style.color = '#e8a49b';
+    document.getElementById('wxv') && 0;
+    console.log('[trtc]', e);
+  }
+}
+
+/* ============ 控制 ============ */
+document.getElementById('b-mute').onclick = function(){
+  MUTED = !MUTED;
+  this.querySelector('.circle').classList.toggle('off', MUTED);
+  document.getElementById('lb-mute').textContent = MUTED ? '已静音' : '静音';
+  var ok = false;
+  try {
+    if (window.__trtc) {
+      if (MUTED) window.__trtc.stopLocalAudio();
+      else window.__trtc.startLocalAudio();
+      ok = true;
+    }
+  } catch (e) { console.log('[mute]', e.message); }
+  if (!ok && stream) stream.getAudioTracks().forEach(function(t){ t.enabled = !MUTED; });
+  if (!ok && !stream) showVoice('还没连上');
+};
+
+document.getElementById('b-cam').onclick = function(){
+  CAMON = !CAMON;
+  this.querySelector('.circle').classList.toggle('off', !CAMON);
+  document.getElementById('lb-cam').textContent = CAMON ? '关画面' : '开画面';
+  var lc = document.getElementById('local');
+  var ok = false;
+  try {
+    if (window.__trtc) {
+      if (CAMON) {
+        window.__trtc.startLocalVideo({ view: 'local' });
+        lc.classList.add('on');
+      } else {
+        window.__trtc.stopLocalVideo();
+        lc.classList.remove('on');
+      }
+      ok = true;
+    }
+  } catch (e) { console.log('[cam]', e.message); }
+  if (!ok && stream) {
+    stream.getVideoTracks().forEach(function(t){ t.enabled = CAMON; });
+    lc.classList.toggle('on', CAMON);
+  }
+};
+
+document.getElementById('b-hang').onclick = hangup;
+
+var HUNG = false;
+function hangup(byPeer){
+  if (HUNG) return;
+  HUNG = true;
+  if (TIMER) { clearInterval(TIMER); TIMER = null; }
+  try { if (window.__trtc) window.__trtc.exitRoom(); } catch(e){}
+  if (stream) stream.getTracks().forEach(function(t){ t.stop(); });
+  document.getElementById('ov-time').textContent = fmt(SEC);
+  var why;
+  if (byPeer === true) { why = '对方挂断了'; }
+  else if (byPeer) { why = '连接断了'; }
+  else { why = SEC >= 60 ? ('聊了 ' + Math.floor(SEC / 60) + ' 分钟') : '刚接通就挂了'; }
+  document.getElementById('ov-note').textContent = why;
+  var rb = document.getElementById('ringbar');
+  if (rb) rb.classList.remove('on');
+  document.getElementById('over').classList.add('on');
+  // 上报结束（让系统记时长）
+  try {
+    fetch('/xin/api/call/end', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({key: '@@KEY@@', id: @@BID@@, secs: SEC})
+    });
+  } catch(e){}
+}
+
+var RINGOK = false;
+document.addEventListener('click', function(){
+  try {
+    if (ENTERED && !RINGOK) {
+      RINGOK = true;
+      var r = document.getElementById('ringbar');
+      if (r) r.classList.remove('on');
+    }
+  } catch (e) {}
+  try {
+    if (window.__ac && window.__ac.state === 'suspended') window.__ac.resume();
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+  } catch(e){}
+  var t = document.getElementById('touch-tip');
+  if (t) t.style.opacity = '0';
+});
+
+window.addEventListener('beforeunload', function(){
+  try { fetch('/xin/api/call/end', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({key: '@@KEY@@', id: @@BID@@, secs: SEC}),
+    keepalive: true
+  }); } catch(e){}
+});
+</script>
+</body>
+</html>
