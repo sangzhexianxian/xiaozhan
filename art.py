@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """画廊（2026-11-16）
 
-- 粉丝端 /xin/art   ：三卷十三幅，标价，可点开看大图
+- 粉丝端 /xin/art   ：分卷陈列，标价，可点开看大图
 - 后台   /xin/artops/{key}：改价、标已售、上下架
 数据存 settings.art_works（JSON），缺失项用下面的 DEF 兜底。
 图片放在 media/art/ 下，经 /xin/m/art/ 对外提供（P1.jpg、P2.jpg…）。
@@ -199,7 +199,7 @@ def page(req=None):
              '<div class="nm">老师<small>画</small></div></div>')
 
     h.append('<div class="title"><h1>画</h1>'
-             '<div class="sb">水墨 · 纸本 · 三十几年</div>'
+             '<div class="sb">原作 · 限量</div>'
              '<div class="ln"></div></div>')
 
     for vi, (vol, sub, colo) in enumerate(VOLS):
@@ -225,7 +225,7 @@ def page(req=None):
                      ' data-href="/xin/liuyan?art=' + pid + '">'
                      '<img loading="lazy" src="' + thumb(pid) + '" alt="' + H.escape(it["t"]) + '">'
                      '<div class="cap"><b>' + H.escape(it["t"]) + '</b>'
-                     '<span class="pr">' + price + '<i>水墨纸本</i></span>')
+                     '<span class="pr">' + price + '<i>原作</i></span>')
             if pid == "p11" and note:
                 h.append('<div class="st">' + H.escape(note) + '</div>')
             h.append('</div></a>')
@@ -235,7 +235,7 @@ def page(req=None):
 
     h.append('<div class="how"><div class="sh">怎 么 请 一 幅</div>'
              '<div class="rule"></div>'
-             '<p><b>每一幅都是原件。</b>纸本水墨，不是复制品，不是印刷。</p>'
+             '<p><b>每一幅都是原件。</b>不是复制品，不是印刷。</p>'
              '<p>喜欢哪一幅，点开，按「我想要这幅」，把你的想法写给他。'
              '他会亲自跟你聊——尺寸、装裱、怎么寄，都当面说清。</p>'
              '<p>钱不在这里付。<b>谈妥了再说。</b></p></div>')

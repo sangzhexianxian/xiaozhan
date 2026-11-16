@@ -21,7 +21,7 @@ def _cfg():
     return {
         "CSS": ui.XIN_CSS,
         "BRAND": core.get("brand"),
-        "MARK": core.get("brand")[:1] or "山",
+        "MARK": core.get("brand")[:1] or "站",
         "SUB1": "有些话，说不出口的，",
         "SUB2": "写在这里。",
         "SUB3": "只有我看到",

@@ -399,7 +399,7 @@ def hall_page(req=None):
 <a class="p" href="/xin/art">
   <div class="pl">
     <div class="pn">买一幅画</div>
-    <div class="ps">水墨 · 纸本 · 十三幅</div>
+    <div class="ps">原作 · 限量</div>
     <div class="pi">都是原件 · 看中了直接跟我聊 · 谈妥再付</div>
   </div>
   <div class="pr"><b>\u00a5%s</b><span>起</span></div>
@@ -471,8 +471,8 @@ a{color:inherit;text-decoration:none}
     <div class="hero">
       <img src="/xin/m/avatar-s.png" alt="">
       <h1>%s</h1>
-      <div class="role">书画　诗歌　诵读</div>
-      <div class="proof">1044 条作品　·　声音被用过上亿次</div>
+      <div class="role">作品　声音　文字</div>
+      <div class="proof">每一件，都是亲手做的</div>
     </div>
 
     <div class="say">

@@ -8,7 +8,7 @@
 
 用法：
     import notify
-    notify.alert("有人要买「关山月」", "<p>...</p>", "有人要买关山月 2980")
+    notify.alert("有人要买「作品名」", "<p>...</p>", "有人要买作品名 1980")
 """
 import json
 import os

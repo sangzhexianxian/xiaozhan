@@ -352,11 +352,12 @@ def install(app):
              '<title>值班室</title><style>' + ROOM_CSS + '</style></head><body><div class="wrap">']
 
         # 抬头：印章「山」+ 品牌 + 工作台
+        _brand = core.get("brand") or "我的小站"
         h.append('<div class="top">'
                  '<div class="brand">'
-                 '<div class="seal">\u5c71</div>'
-                 '<div><div class="tg">\u91ce\u5c71\u4e0b\u7684\u5c0f\u7ad9'
-                 '<small>\u5de5 \u4f5c \u53f0</small></div></div></div>'
+                 '<div class="seal">' + _brand[:1] + '</div>'
+                 '<div><div class="tg">' + _brand +
+                 '<small>工 作 台</small></div></div></div>'
                  '<div class="dt"><span class="clock" id="ck">%s</span> \u00b7 <b>%s</b>'
                  '<br>%s \u00b7 %s</div></div>'
                                   % (time.strftime("%H:%M"), seg, today, wd))
@@ -440,7 +441,7 @@ def install(app):
             ("约真人", "挑时间 · 电话或视频", _base + "/xin/live"),
             ("写封信", "写一封 · 他念给你听", _base + "/xin/liuyan"),
             ("我 的", "余额 · 充值 · 记录", _base + "/xin/me"),
-            ("画 廊", "十三幅画 · 看中了跟他聊", _base + "/xin/art"),
+            ("画 廊", "看中了跟他聊", _base + "/xin/art"),
         ]
         if nxt and nxt["token"]:
             _links.append(("通话门牌",

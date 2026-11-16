@@ -6,6 +6,18 @@
 
 > 所有钱直接进你自己的收款码，程序不碰资金，不接支付通道。
 
+<p align="center">
+  <img src="docs/screenshots/hall.png" width="250">
+  &nbsp;
+  <img src="docs/screenshots/gallery.png" width="250">
+</p>
+<p align="center">
+  <img src="docs/screenshots/order.png" width="250">
+  &nbsp;
+  <img src="docs/screenshots/boss.png" width="250">
+</p>
+<p align="center"><sub>粉丝看到的门厅 · 作品墙　｜　下单弹层 · 手机工作台（真机截图，示例数据）</sub></p>
+
 ---
 
 ## 它长什么样
@@ -58,7 +70,7 @@ http://127.0.0.1:8872/xin/boss/<ops_key>
 | 作品：图片、名字、价格、上下架 | 工作台里的「画」页，或改 `art.py` 里的 `DEF` |
 | 收款码 | 把图片存成 `media/pay.png`，覆盖掉占位图 |
 
-作品图片放 `media/art/`，文件名跟 `DEF` 里对上（`p01.jpg`、`p02.jpg`…），对外地址是 `/xin/m/art/p01.jpg`。
+作品图片分两套放：`media/art/b/`（大图）和 `media/art/t/`（缩略图），文件名跟 `DEF` 里的 id 对应（`p01.jpg`、`p02.jpg`…）。换图只换文件，不用改代码。
 
 ---
 
