@@ -27,7 +27,7 @@
 
 ```bash
 # 1. 拿代码
-git clone <仓库地址> xiaozhan && cd xiaozhan
+git clone https://github.com/sangzhexianxian/xiaozhan.git xiaozhan && cd xiaozhan
 
 # 2. 配环境
 python3 -m pip install -r requirements.txt
